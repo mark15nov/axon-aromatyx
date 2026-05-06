@@ -44,6 +44,7 @@ export function CotizadorTab() {
   const [loading, setLoading] = useState(false)
   const [agendando, setAgendando] = useState(false)
   const [agendado, setAgendado] = useState(null)
+  const [enviadoTesoreria, setEnviadoTesoreria] = useState(false)
 
   useEffect(() => {
     logistica.getOrigen().then(setOrigen)
@@ -319,9 +320,28 @@ export function CotizadorTab() {
                 <div className="stat-label mb-1">Total aprobado</div>
                 <div className="font-display font-semibold text-ink-50 text-3xl tabular-nums">{fmtMoney(agendado.total)}</div>
               </div>
-              <div className="mt-6">
+              <div className="mt-6 flex flex-col items-center gap-3">
+                {enviadoTesoreria ? (
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-signal-okBg border border-signal-okBorder text-signal-ok text-[12.5px] font-medium">
+                    <Building2 size={14} strokeWidth={2} />
+                    Enviado a tesorería para compras
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setEnviadoTesoreria(true)}
+                    className="btn-primary"
+                  >
+                    <Building2 size={14} strokeWidth={2} />
+                    Enviar a tesorería
+                  </button>
+                )}
                 <button
-                  onClick={() => { setAgendado(null); setCot(null); setForm(f => ({ ...f, operador_id: '', destino_id: '', proposito: '' })) }}
+                  onClick={() => {
+                    setAgendado(null)
+                    setCot(null)
+                    setEnviadoTesoreria(false)
+                    setForm(f => ({ ...f, operador_id: '', destino_id: '', proposito: '' }))
+                  }}
                   className="btn-ghost"
                 >
                   Cotizar otro viaje

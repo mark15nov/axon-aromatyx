@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDownToLine, ArrowUpFromLine, Plus, X, Layers, AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react'
+import { ArrowDownToLine, ArrowUpFromLine, Plus, X, Layers, AlertTriangle, TrendingDown } from 'lucide-react'
 import { inventarios } from '@/services/api'
 import { fmtMoney, fmtNumber, fmtDate } from '@/utils/format'
 
@@ -21,15 +21,13 @@ export function FormMovimiento({ tipo, aromas, difusores, presetItem, anchorRect
   const isEntrada = tipo === 'entrada'
   const [itemTipo, setItemTipo] = useState(initialItemTipo)
 
-  // Defaults inteligentes desde el item
+  // Defaults inteligentes desde el item (solo entrada — la salida usa FIFO real)
   const defaultCosto  = presetItem ? (presetItem.costo_por_litro ?? presetItem.costo ?? 0) : ''
-  const defaultPrecio = presetItem ? (presetItem.precio_venta_litro ?? presetItem.precio ?? 0) : ''
 
   const [form, setForm] = useState({
     item_id: presetItem?.id || '',
     cantidad: '',
     costo_unitario: isEntrada ? defaultCosto : '',
-    precio_unitario: !isEntrada ? defaultPrecio : '',
     proveedor: '',
     cliente: '',
     motivo: '',
@@ -54,8 +52,7 @@ export function FormMovimiento({ tipo, aromas, difusores, presetItem, anchorRect
       setForm(f => ({
         ...f,
         item_id: presetItem.id,
-        costo_unitario:  isEntrada  ? (presetItem.costo_por_litro ?? presetItem.costo ?? 0) : f.costo_unitario,
-        precio_unitario: !isEntrada ? (presetItem.precio_venta_litro ?? presetItem.precio ?? 0) : f.precio_unitario,
+        costo_unitario: isEntrada ? (presetItem.costo_por_litro ?? presetItem.costo ?? 0) : f.costo_unitario,
       }))
     }
   }, [presetItem, isEntrada])
@@ -85,12 +82,9 @@ export function FormMovimiento({ tipo, aromas, difusores, presetItem, anchorRect
   // Cálculos en vivo
   const cantidadN = +form.cantidad || 0
   const costoUnitN  = +form.costo_unitario || 0
-  const precioUnitN = +form.precio_unitario || 0
   const costoTotalEntrada = cantidadN * costoUnitN
-  const ingresoTotal      = cantidadN * precioUnitN
   const costoTotalSalida  = preview?.costo_total || 0
-  const utilidad          = ingresoTotal - costoTotalSalida
-  const margenPct         = ingresoTotal > 0 ? (utilidad / ingresoTotal) * 100 : 0
+  const costoPromFIFO     = preview?.costo_promedio || 0
 
   const submit = async (e) => {
     e.preventDefault()
@@ -109,7 +103,7 @@ export function FormMovimiento({ tipo, aromas, difusores, presetItem, anchorRect
       operador: form.operador,
       ...(isEntrada
         ? { costo_unitario: costoUnitN, proveedor: form.proveedor || null }
-        : { precio_unitario: precioUnitN, cliente: form.cliente || null }),
+        : { costo_fifo_unitario: costoPromFIFO, costo_fifo_total: costoTotalSalida, cliente: form.cliente || null }),
     }
     try {
       const res = isEntrada
@@ -207,7 +201,7 @@ export function FormMovimiento({ tipo, aromas, difusores, presetItem, anchorRect
             )}
           </div>
 
-          {/* Cantidad + Costo/Precio en mismo row */}
+          {/* Cantidad + Costo (entrada) o Costo FIFO read-only (salida) */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="stat-label block mb-2">
@@ -225,28 +219,45 @@ export function FormMovimiento({ tipo, aromas, difusores, presetItem, anchorRect
                 autoFocus
               />
             </div>
-            <div>
-              <label className="stat-label block mb-2 flex items-center justify-between">
-                <span>{isEntrada ? 'Costo unitario' : 'Precio unitario'}</span>
-                <span className="text-ink-400 normal-case tracking-normal">por {unidad}</span>
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400 font-mono text-[13px] pointer-events-none">$</span>
-                <input
-                  required={isEntrada || esVenta}
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={isEntrada ? form.costo_unitario : form.precio_unitario}
-                  onChange={e => setForm({
-                    ...form,
-                    [isEntrada ? 'costo_unitario' : 'precio_unitario']: e.target.value,
-                  })}
-                  className="input font-mono pl-7"
-                  placeholder="0.00"
-                />
+            {isEntrada ? (
+              <div>
+                <label className="stat-label block mb-2 flex items-center justify-between">
+                  <span>Costo unitario</span>
+                  <span className="text-ink-400 normal-case tracking-normal">por {unidad}</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400 font-mono text-[13px] pointer-events-none">$</span>
+                  <input
+                    required
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={form.costo_unitario}
+                    onChange={e => setForm({ ...form, costo_unitario: e.target.value })}
+                    className="input font-mono pl-7"
+                    placeholder="0.00"
+                  />
+                </div>
               </div>
-            </div>
+            ) : (
+              <div>
+                <label className="stat-label block mb-2 flex items-center justify-between">
+                  <span>Costo FIFO</span>
+                  <span className="text-ink-400 normal-case tracking-normal">prom. por {unidad}</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400 font-mono text-[13px] pointer-events-none">$</span>
+                  <div className="input font-mono pl-7 flex items-center justify-between !cursor-default !bg-ink-850/60 !text-ink-100">
+                    <span className="tabular-nums">
+                      {costoPromFIFO > 0 ? fmtNumber(costoPromFIFO, 2) : '—'}
+                    </span>
+                    <span className="font-mono text-[10px] text-ink-400 ml-2">
+                      <Layers size={10} className="inline -mt-0.5" /> FIFO
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div>
@@ -365,38 +376,20 @@ export function FormMovimiento({ tipo, aromas, difusores, presetItem, anchorRect
               )}
 
               {preview.suficiente && (
-                <div className="border-t border-ink-800 pt-3 grid grid-cols-3 gap-3">
+                <div className="border-t border-ink-800 pt-3 grid grid-cols-2 gap-3">
                   <div>
-                    <div className="font-mono text-[9.5px] uppercase tracking-wider text-ink-400 mb-0.5">Costo FIFO</div>
+                    <div className="font-mono text-[9.5px] uppercase tracking-wider text-ink-400 mb-0.5">Costo FIFO total</div>
                     <div className="font-display font-semibold text-ink-50 text-[15px] tabular-nums">{fmtMoney(preview.costo_total)}</div>
                     <div className="font-mono text-[10px] text-ink-400 mt-0.5">prom. {fmtMoney(preview.costo_promedio)}/{unidad}</div>
                   </div>
-                  {esVenta && precioUnitN > 0 ? (
-                    <>
-                      <div>
-                        <div className="font-mono text-[9.5px] uppercase tracking-wider text-ink-400 mb-0.5">Ingreso</div>
-                        <div className="font-display font-semibold text-ink-50 text-[15px] tabular-nums">{fmtMoney(ingresoTotal)}</div>
-                      </div>
-                      <div>
-                        <div className="font-mono text-[9.5px] uppercase tracking-wider text-ink-400 mb-0.5 flex items-center gap-1">
-                          {utilidad >= 0 ? <TrendingUp size={10} className="text-signal-ok" /> : <TrendingDown size={10} className="text-signal-alert" />}
-                          {utilidad >= 0 ? 'Utilidad' : 'Pérdida'}
-                        </div>
-                        <div className={`font-display font-semibold text-[15px] tabular-nums ${utilidad >= 0 ? 'text-signal-ok' : 'text-signal-alert'}`}>
-                          {fmtMoney(Math.abs(utilidad))}
-                        </div>
-                        <div className={`font-mono text-[10px] mt-0.5 ${utilidad >= 0 ? 'text-signal-ok' : 'text-signal-alert'}`}>
-                          margen {margenPct.toFixed(1)}%
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="col-span-2">
-                      <div className="font-mono text-[9.5px] uppercase tracking-wider text-ink-400 mb-0.5">Impacto P&amp;L</div>
-                      <div className="font-display font-semibold text-signal-alert text-[15px] tabular-nums">−{fmtMoney(preview.costo_total)}</div>
-                      <div className="font-mono text-[10px] text-ink-400 mt-0.5">salida sin venta — gasto a P&amp;L</div>
+                  <div>
+                    <div className="font-mono text-[9.5px] uppercase tracking-wider text-ink-400 mb-0.5 flex items-center gap-1">
+                      <TrendingDown size={10} className="text-signal-alert" />
+                      Costo de salida
                     </div>
-                  )}
+                    <div className="font-display font-semibold text-signal-alert text-[15px] tabular-nums">−{fmtMoney(preview.costo_total)}</div>
+                    <div className="font-mono text-[10px] text-ink-400 mt-0.5">{esVenta ? 'venta · costo a P&L' : 'gasto a P&L'}</div>
+                  </div>
                 </div>
               )}
             </div>

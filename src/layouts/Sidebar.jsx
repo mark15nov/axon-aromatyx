@@ -43,7 +43,7 @@ export function Sidebar() {
         <BrandMark />
         <div className="leading-tight">
           <div className="font-display font-semibold text-ink-50 text-[19px] tracking-tight">Aromatyx</div>
-          <div className="font-mono text-[9.5px] text-ink-400 uppercase tracking-[0.2em] mt-0.5">Sistema operativo</div>
+          <div className="font-mono text-[9.5px] text-ink-400 uppercase tracking-[0.2em] mt-0.5">Sistema de inteligencia empresarial</div>
         </div>
       </Link>
 
