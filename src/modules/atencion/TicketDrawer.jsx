@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { X, Send, Globe, MessageCircle, Mail, User, Clock, AlertCircle, Phone } from 'lucide-react'
 import { StatusBadge } from '@/components/StatusBadge'
 import { fmtRelative, fmtDateTime } from '@/utils/format'
@@ -23,7 +24,7 @@ export function TicketDrawer({ ticket, onClose, onUpdate }) {
         ...(ticket.mensajes || []),
         {
           autor: 'equipo',
-          nombre: 'Mario Trujillo',
+          nombre: 'Fernando Espinosa',
           texto: reply,
           fecha: new Date().toISOString(),
         },
@@ -39,7 +40,7 @@ export function TicketDrawer({ ticket, onClose, onUpdate }) {
     onUpdate(updated)
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-y-0 right-0 w-full md:w-[520px] bg-ink-950 border-l border-ink-800 z-40 flex flex-col shadow-2xl">
       {/* Header */}
       <div className="px-5 py-4 border-b border-ink-800 flex items-start justify-between">
@@ -185,6 +186,7 @@ export function TicketDrawer({ ticket, onClose, onUpdate }) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

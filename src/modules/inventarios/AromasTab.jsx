@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Search, Filter, Droplet, AlertCircle, ArrowDownToLine, ArrowUpFromLine, Layers } from 'lucide-react'
+import { Search, Filter, Droplet, AlertCircle, ArrowDownToLine, ArrowUpFromLine, Layers, Plus, Pencil } from 'lucide-react'
 import { Panel } from '@/components/Panel'
 import { StatusBadge } from '@/components/StatusBadge'
 import { fmtMoney, fmtNumber, fmtRelative, fmtDate } from '@/utils/format'
 import { inventarios } from '@/services/api'
 import { FormMovimiento } from './FormMovimiento'
+import { FormAroma } from './FormSKU'
 
 const FAMILIAS = ['Todas', 'Floral', 'Cítrica', 'Amaderada', 'Especiada', 'Frutal', 'Herbal', 'Acuática', 'Dulce']
 
@@ -16,6 +17,8 @@ export function AromasTab() {
   const [selected, setSelected] = useState(null)
   const [lotes, setLotes] = useState([])
   const [showForm, setShowForm] = useState(null) // { tipo, anchorRect } | null
+  const [editingSKU, setEditingSKU] = useState(null) // aroma a editar
+  const [creatingSKU, setCreatingSKU] = useState(false)
 
   const refreshAromas = () => inventarios.listAromas().then(setAromas)
   useEffect(() => { refreshAromas() }, [])
@@ -103,6 +106,10 @@ export function AromasTab() {
                 </button>
               ))}
             </div>
+            <div className="flex-1" />
+            <button onClick={() => setCreatingSKU(true)} className="btn-primary">
+              <Plus size={11} /> Nuevo aroma
+            </button>
           </div>
         </Panel>
 
@@ -165,18 +172,27 @@ export function AromasTab() {
       {selected && (
         <div className="col-span-12 lg:col-span-4">
           <Panel title={`Detalle · ${selected.codigo}`} action={
-            <button onClick={() => setSelected(null)} className="font-mono text-[10px] text-ink-500 hover:text-ink-200 uppercase tracking-wider">
-              Cerrar ×
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setEditingSKU(selected)}
+                title="Editar aroma"
+                className="w-7 h-7 rounded-full hover:bg-ink-850 flex items-center justify-center text-ink-400 hover:text-steel-700 transition-colors"
+              >
+                <Pencil size={12} strokeWidth={1.75} />
+              </button>
+              <button onClick={() => setSelected(null)} className="font-mono text-[10px] text-ink-500 hover:text-ink-200 uppercase tracking-wider">
+                Cerrar ×
+              </button>
+            </div>
           }>
             <div>
               <div className="flex items-start gap-3 mb-4">
-                <div className="w-10 h-10 bg-steel-50 border border-steel-200 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-steel-50 border border-steel-200 flex items-center justify-center">
                   <Droplet size={16} className="text-steel-700" />
                 </div>
                 <div>
                   <div className="font-display font-semibold text-ink-50 text-lg leading-tight">{selected.nombre}</div>
-                  <div className="font-mono text-[11px] text-ink-500 uppercase tracking-wider">{selected.familia}</div>
+                  <div className="font-mono text-[11px] text-ink-400 uppercase tracking-wider">{selected.familia}</div>
                 </div>
               </div>
 
@@ -322,8 +338,26 @@ export function AromasTab() {
               const updated = list.find(a => a.id === selected.id)
               if (updated) setSelected(updated)
             })
-            // Recargar lotes para reflejar el cambio
             inventarios.listLotes('aroma', selected.id).then(setLotes)
+          }}
+        />
+      )}
+
+      {creatingSKU && (
+        <FormAroma
+          onClose={() => setCreatingSKU(false)}
+          onSaved={() => { setCreatingSKU(false); refreshAromas() }}
+        />
+      )}
+      {editingSKU && (
+        <FormAroma
+          aroma={editingSKU}
+          onClose={() => setEditingSKU(null)}
+          onSaved={(res) => {
+            setEditingSKU(null)
+            refreshAromas()
+            if (res === null) setSelected(null) // eliminado
+            else setSelected(res)                // actualizado
           }}
         />
       )}

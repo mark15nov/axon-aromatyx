@@ -192,6 +192,13 @@
 }
 .float-in { animation: float-in 0.4s ease-out both; }
 
+/* Modal pop — solo opacity para no romper transforms de centrado */
+@keyframes modal-pop {
+  from { opacity: 0 }
+  to   { opacity: 1 }
+}
+.modal-pop { animation: modal-pop 0.18s ease-out both; }
+
 /* Range slider in light mode */
 input[type="range"] {
   -webkit-appearance: none;

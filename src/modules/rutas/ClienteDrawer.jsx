@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { X, MapPin, Box, User, Calendar, Droplet } from 'lucide-react'
 import { StatusBadge } from '@/components/StatusBadge'
 import { fmtRelative, fmtDate } from '@/utils/format'
@@ -16,7 +17,7 @@ export function ClienteDrawer({ cliente, onClose }) {
 
   if (!cliente) return null
 
-  return (
+  return createPortal(
     <div className="fixed inset-y-0 right-0 w-full md:w-[480px] bg-ink-950 border-l border-ink-800 z-40 flex flex-col shadow-2xl">
       <div className="px-5 py-4 border-b border-ink-800 flex items-start justify-between">
         <div className="flex-1 min-w-0">
@@ -130,6 +131,7 @@ export function ClienteDrawer({ cliente, onClose }) {
         <button className="btn-ghost flex-1 justify-center">Programar visita</button>
         <button className="btn-primary flex-1 justify-center">Asignar operador</button>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

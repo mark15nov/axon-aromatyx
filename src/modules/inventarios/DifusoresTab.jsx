@@ -1,13 +1,17 @@
 import { useEffect, useState } from 'react'
-import { Box, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react'
+import { Box, ArrowDownToLine, ArrowUpFromLine, Plus, Pencil } from 'lucide-react'
+import { Panel } from '@/components/Panel'
 import { StatusBadge } from '@/components/StatusBadge'
 import { fmtMoney } from '@/utils/format'
 import { inventarios } from '@/services/api'
 import { FormMovimiento } from './FormMovimiento'
+import { FormDifusor } from './FormSKU'
 
 export function DifusoresTab() {
   const [difs, setDifs] = useState([])
   const [form, setForm] = useState(null) // { tipo, item, anchorRect }
+  const [editingSKU, setEditingSKU] = useState(null)
+  const [creatingSKU, setCreatingSKU] = useState(false)
 
   const refresh = () => inventarios.listDifusores().then(setDifs)
   useEffect(() => { refresh() }, [])
@@ -17,6 +21,20 @@ export function DifusoresTab() {
   }
 
   return (
+    <div className="space-y-4">
+      <Panel tight>
+        <div className="px-4 py-3 flex items-center justify-between">
+          <div>
+            <span className="font-mono text-[10.5px] text-ink-400 uppercase tracking-[0.18em]">
+              {difs.length} tipos de difusor
+            </span>
+          </div>
+          <button onClick={() => setCreatingSKU(true)} className="btn-primary">
+            <Plus size={11} /> Nuevo difusor
+          </button>
+        </div>
+      </Panel>
+
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {difs.map(d => {
         const status = d.stock < d.stock_minimo * 0.5 ? 'critico' : d.stock < d.stock_minimo ? 'bajo' : 'ok'
@@ -35,7 +53,16 @@ export function DifusoresTab() {
                   <div className="font-mono text-[10px] text-ink-400 uppercase tracking-wider">{d.codigo} · {d.descripcion}</div>
                 </div>
               </div>
-              <StatusBadge status={status} />
+              <div className="flex items-center gap-2">
+                <StatusBadge status={status} />
+                <button
+                  onClick={() => setEditingSKU(d)}
+                  title="Editar difusor"
+                  className="w-7 h-7 rounded-full hover:bg-ink-850 flex items-center justify-center text-ink-400 hover:text-steel-700 transition-colors"
+                >
+                  <Pencil size={12} strokeWidth={1.75} />
+                </button>
+              </div>
             </div>
 
             <div className="p-5 grid grid-cols-2 gap-4">
@@ -114,6 +141,21 @@ export function DifusoresTab() {
           onSaved={() => { setForm(null); refresh() }}
         />
       )}
+    </div>
+
+    {creatingSKU && (
+      <FormDifusor
+        onClose={() => setCreatingSKU(false)}
+        onSaved={() => { setCreatingSKU(false); refresh() }}
+      />
+    )}
+    {editingSKU && (
+      <FormDifusor
+        difusor={editingSKU}
+        onClose={() => setEditingSKU(null)}
+        onSaved={() => { setEditingSKU(null); refresh() }}
+      />
+    )}
     </div>
   )
 }

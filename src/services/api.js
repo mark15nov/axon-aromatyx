@@ -36,16 +36,22 @@ async function request(method, path, body) {
 
 /* ─────────── INVENTARIOS ─────────── */
 export const inventarios = {
-  listAromas: () => request('GET', '/inventarios/aromas'),
-  getAroma: (id) => request('GET', `/inventarios/aromas/${id}`),
-  listDifusores: () => request('GET', '/inventarios/difusores'),
-  listMovimientos: () => request('GET', '/inventarios/movimientos'),
-  listLotes: (itemTipo, itemId) => request('GET', `/inventarios/lotes/${itemTipo}/${itemId}`),
-  previewFIFO: ({ item_tipo, item_id, cantidad }) =>
-    request('POST', '/inventarios/preview-fifo', { item_tipo, item_id, cantidad }),
-  registrarEntrada: (data) => request('POST', '/inventarios/entradas', data),
-  registrarSalida: (data) => request('POST', '/inventarios/salidas', data),
-  getKpis: () => request('GET', '/inventarios/kpis'),
+  listAromas:        () => request('GET', '/inventarios/aromas'),
+  getAroma:          (id) => request('GET', `/inventarios/aromas/${id}`),
+  createAroma:       (data) => request('POST', '/inventarios/aromas', data),
+  updateAroma:       (id, data) => request('PATCH', `/inventarios/aromas/${id}`, data),
+  deleteAroma:       (id) => request('DELETE', `/inventarios/aromas/${id}`),
+  listDifusores:     () => request('GET', '/inventarios/difusores'),
+  createDifusor:     (data) => request('POST', '/inventarios/difusores', data),
+  updateDifusor:     (id, data) => request('PATCH', `/inventarios/difusores/${id}`, data),
+  deleteDifusor:     (id) => request('DELETE', `/inventarios/difusores/${id}`),
+  listMovimientos:   () => request('GET', '/inventarios/movimientos'),
+  listLotes:         (itemTipo, itemId) => request('GET', `/inventarios/lotes/${itemTipo}/${itemId}`),
+  previewFIFO:       ({ item_tipo, item_id, cantidad }) =>
+                       request('POST', '/inventarios/preview-fifo', { item_tipo, item_id, cantidad }),
+  registrarEntrada:  (data) => request('POST', '/inventarios/entradas', data),
+  registrarSalida:   (data) => request('POST', '/inventarios/salidas', data),
+  getKpis:           () => request('GET', '/inventarios/kpis'),
 }
 
 /* ─────────── FINANCIEROS ─────────── */
@@ -66,19 +72,36 @@ export const tickets = {
   update: (id, data) => request('PATCH', `/tickets/${id}`, data),
 }
 
-/* ─────────── LOGÍSTICA ─────────── */
+/* ─────────── LOGÍSTICA — Viajes foráneos del operador ─────────── */
 export const logistica = {
-  listViajes: () => request('GET', '/logistica/viajes'),
-  listCiudades: () => request('GET', '/logistica/ciudades'),
-  cotizar: (data) => request('POST', '/logistica/cotizaciones', data),
+  listViajes:      () => request('GET', '/logistica/viajes'),
+  listCiudades:    () => request('GET', '/logistica/ciudades'),
+  getOrigen:       () => request('GET', '/logistica/origen'),
+  listTransportes: () => request('GET', '/logistica/transportes'),
+  listHoteles:     () => request('GET', '/logistica/hoteles'),
+  cotizar:         (data) => request('POST', '/logistica/cotizaciones', data),
+  agendar:         (data) => request('POST', '/logistica/agendar', data),
 }
 
 /* ─────────── RUTAS ─────────── */
 export const rutas = {
-  listClientes: () => request('GET', '/rutas/clientes'),
-  listZonas: () => request('GET', '/rutas/zonas'),
-  listOperadores: () => request('GET', '/rutas/operadores'),
-  listReportes: () => request('GET', '/rutas/reportes'),
+  listClientes:    () => request('GET', '/rutas/clientes'),
+  createCliente:   (data) => request('POST', '/rutas/clientes', data),
+  updateCliente:   (id, data) => request('PATCH', `/rutas/clientes/${id}`, data),
+  deleteCliente:   (id) => request('DELETE', `/rutas/clientes/${id}`),
+  listZonas:       () => request('GET', '/rutas/zonas'),
+  listZonasRaw:    () => request('GET', '/rutas/zonas-raw'),
+  createZona:      (data) => request('POST', '/rutas/zonas', data),
+  listOperadores:  () => request('GET', '/rutas/operadores'),
+  createOperador:  (data) => request('POST', '/rutas/operadores', data),
+  updateOperador:  (id, data) => request('PATCH', `/rutas/operadores/${id}`, data),
+  deleteOperador:  (id) => request('DELETE', `/rutas/operadores/${id}`),
+  listReportes:    () => request('GET', '/rutas/reportes'),
+  listIncidentes:  () => request('GET', '/rutas/incidentes'),
+  listTiposIncidente: () => request('GET', '/rutas/tipos-incidente'),
+  planSemanal:     (dias = 5) => request('POST', '/rutas/plan-semanal', { dias }),
+  optimizar:       (zonaId, opts = {}) => request('POST', `/rutas/optimizar/${zonaId}`, opts),
+  reportarIncidente: (data) => request('POST', '/rutas/incidentes', data),
   registrarVisita: (data) => request('POST', '/rutas/visitas', data),
 }
 

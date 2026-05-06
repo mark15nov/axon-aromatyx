@@ -73,7 +73,7 @@ export default function Dashboard() {
                 </span>
               </div>
               <h2 className="font-display font-semibold text-ink-50 text-[40px] leading-[1.05] tracking-tight mb-2">
-                Hola Mario, <span className="text-steel-600 italic">esto es lo que te espera hoy.</span>
+                Hola Fernando, <span className="text-steel-600 italic">esto es lo que te espera hoy.</span>
               </h2>
               <p className="text-ink-300 text-[14px] leading-relaxed max-w-xl">
                 Tienes <strong className="text-ink-50">{ticketsAbiertos} tickets</strong> esperando respuesta,

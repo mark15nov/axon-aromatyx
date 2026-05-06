@@ -92,10 +92,10 @@ export function Sidebar() {
       <div className="border-t border-ink-800 px-4 py-4">
         <button className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-ink-850 transition-colors">
           <div className="w-9 h-9 rounded-full bg-gradient-to-br from-steel-400 to-steel-600 flex items-center justify-center font-display font-semibold text-[13px] text-white shadow-soft">
-            MT
+            FE
           </div>
           <div className="flex-1 leading-tight text-left">
-            <div className="text-[13px] text-ink-50 font-semibold">Mario Trujillo</div>
+            <div className="text-[13px] text-ink-50 font-semibold">Fernando Espinosa</div>
             <div className="font-mono text-[9.5px] text-ink-400 uppercase tracking-wider">Administrador</div>
           </div>
           <ChevronRight size={14} className="text-ink-400" />

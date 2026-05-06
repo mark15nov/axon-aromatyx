@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Search, MapPin, Building2 } from 'lucide-react'
+import { Search, Building2, Plus, Pencil } from 'lucide-react'
 import { Panel } from '@/components/Panel'
 import { StatusBadge } from '@/components/StatusBadge'
 import { fmtRelative, fmtDate } from '@/utils/format'
 import { rutas } from '@/services/api'
+import { FormCliente } from './FormCliente'
 
 const STATUS_VARIANT = { urgente: 'alert', pendiente: 'warn', al_dia: 'ok' }
 
@@ -13,11 +14,14 @@ export function ClientesTab({ onClienteClick }) {
   const [q, setQ] = useState('')
   const [filtroZona, setFiltroZona] = useState('todas')
   const [filtroStatus, setFiltroStatus] = useState('todos')
+  const [creating, setCreating] = useState(false)
+  const [editing, setEditing] = useState(null)
 
-  useEffect(() => {
+  const cargar = () => {
     rutas.listClientes().then(setClientes)
     rutas.listZonas().then(setZonas)
-  }, [])
+  }
+  useEffect(() => { cargar() }, [])
 
   const filtered = useMemo(() => {
     return clientes.filter(c => {
@@ -41,17 +45,19 @@ export function ClientesTab({ onClienteClick }) {
               className="bg-transparent flex-1 outline-none text-sm placeholder:text-ink-500 text-ink-200"
             />
           </div>
-          <div className="flex items-center gap-1">
-            <span className="font-mono text-[10px] text-ink-500 uppercase tracking-wider mr-1">Zona:</span>
-            <select
-              value={filtroZona}
-              onChange={e => setFiltroZona(e.target.value)}
-              className="font-mono text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-full border border-ink-800 bg-ink-900 text-ink-100 hover:bg-ink-850"
-            >
-              <option value="todas">Todas</option>
-              {zonas.map(z => <option key={z.id} value={z.id}>{z.nombre}</option>)}
-            </select>
-          </div>
+          <select
+            value={filtroZona}
+            onChange={e => setFiltroZona(e.target.value)}
+            className="font-mono text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-full border border-ink-800 bg-ink-900 text-ink-100 hover:bg-ink-850"
+          >
+            <option value="todas">Todas las zonas</option>
+            <optgroup label="CDMX">
+              {zonas.filter(z => !z.foranea).map(z => <option key={z.id} value={z.id}>{z.nombre}</option>)}
+            </optgroup>
+            <optgroup label="Foráneas">
+              {zonas.filter(z => z.foranea).map(z => <option key={z.id} value={z.id}>{z.nombre} · {z.ciudad}</option>)}
+            </optgroup>
+          </select>
           <div className="flex items-center gap-1">
             {[
               { v: 'todos', l: 'Todos' },
@@ -72,6 +78,10 @@ export function ClientesTab({ onClienteClick }) {
               </button>
             ))}
           </div>
+          <div className="flex-1" />
+          <button onClick={() => setCreating(true)} className="btn-primary">
+            <Plus size={11} /> Nuevo cliente
+          </button>
         </div>
       </Panel>
 
@@ -89,56 +99,100 @@ export function ClientesTab({ onClienteClick }) {
                 <th className="table-head text-center">Aceite</th>
                 <th className="table-head">Status</th>
                 <th className="table-head">Próxima visita</th>
+                <th className="table-head"></th>
               </tr>
             </thead>
             <tbody>
               {filtered.map(c => (
-                <tr
-                  key={c.id}
-                  onClick={() => onClienteClick && onClienteClick(c)}
-                  className="cursor-pointer hover:bg-ink-900 transition-colors"
-                >
-                  <td className="table-cell font-mono text-[11px] text-ink-400">{c.codigo}</td>
-                  <td className="table-cell">
+                <tr key={c.id} className="hover:bg-ink-850 transition-colors group">
+                  <td
+                    className="table-cell font-mono text-[11px] text-ink-400 cursor-pointer"
+                    onClick={() => onClienteClick && onClienteClick(c)}
+                  >{c.codigo}</td>
+                  <td
+                    className="table-cell cursor-pointer"
+                    onClick={() => onClienteClick && onClienteClick(c)}
+                  >
                     <div className="flex items-center gap-2">
-                      <Building2 size={11} className="text-ink-500" />
-                      <span className="text-ink-100 font-medium">{c.nombre}</span>
+                      <Building2 size={11} className="text-ink-400 flex-shrink-0" />
+                      <span className="text-ink-50 font-medium truncate">{c.nombre}</span>
                     </div>
                   </td>
-                  <td className="table-cell">
-                    <span className="inline-flex items-center gap-1.5 text-[11px]">
+                  <td className="table-cell" onClick={() => onClienteClick && onClienteClick(c)}>
+                    <span className="inline-flex items-center gap-1.5 text-[11.5px]">
                       <span className="w-1.5 h-1.5 rounded-full" style={{ background: c.zona_color }} />
-                      <span className="text-ink-300">{c.zona_nombre}</span>
+                      <span className="text-ink-200">{c.zona_nombre}</span>
+                      {c.zona_foranea && <span className="font-mono text-[9.5px] text-steel-700">· {c.ciudad}</span>}
                     </span>
                   </td>
-                  <td className="table-cell text-center font-mono text-ink-200 tabular-nums">{c.equipos}</td>
-                  <td className="table-cell text-ink-300 text-[12px]">{c.operador_asignado}</td>
-                  <td className="table-cell">
-                    <div className="font-mono text-[11px] text-ink-300">{fmtRelative(c.ultima_visita)}</div>
-                    <div className="font-mono text-[10px] text-ink-500">{c.dias_ultima_visita}d</div>
+                  <td className="table-cell text-center font-mono text-ink-100 tabular-nums" onClick={() => onClienteClick && onClienteClick(c)}>{c.equipos}</td>
+                  <td className="table-cell text-ink-200 text-[12px]" onClick={() => onClienteClick && onClienteClick(c)}>{c.operador_asignado}</td>
+                  <td className="table-cell" onClick={() => onClienteClick && onClienteClick(c)}>
+                    <div className="font-mono text-[11px] text-ink-200">{fmtRelative(c.ultima_visita)}</div>
+                    <div className="font-mono text-[10px] text-ink-400">{c.dias_ultima_visita}d</div>
                   </td>
-                  <td className="table-cell">
+                  <td className="table-cell" onClick={() => onClienteClick && onClienteClick(c)}>
                     <div className="flex items-center justify-center gap-2">
-                      <div className="w-10 h-1 bg-ink-800 overflow-hidden">
+                      <div className="w-10 h-1 bg-ink-800 rounded-full overflow-hidden">
                         <div
-                          className={`h-full ${c.aceite_restante_pct < 25 ? 'bg-red-500' : c.aceite_restante_pct < 50 ? 'bg-amber-500' : 'bg-green-500'}`}
+                          className={`h-full rounded-full ${c.aceite_restante_pct < 25 ? 'bg-signal-alert' : c.aceite_restante_pct < 50 ? 'bg-signal-warn' : 'bg-signal-ok'}`}
                           style={{ width: `${c.aceite_restante_pct}%` }}
                         />
                       </div>
-                      <span className="font-mono text-[10px] tabular-nums text-ink-300">{c.aceite_restante_pct}%</span>
+                      <span className="font-mono text-[10.5px] tabular-nums text-ink-200">{c.aceite_restante_pct}%</span>
                     </div>
                   </td>
-                  <td className="table-cell"><StatusBadge status={c.status_visita} variant={STATUS_VARIANT[c.status_visita]} /></td>
-                  <td className="table-cell font-mono text-[11px] text-ink-400">{fmtDate(c.proxima_visita)}</td>
+                  <td className="table-cell" onClick={() => onClienteClick && onClienteClick(c)}>
+                    <StatusBadge status={c.status_visita} variant={STATUS_VARIANT[c.status_visita]} />
+                  </td>
+                  <td className="table-cell font-mono text-[11px] text-ink-400" onClick={() => onClienteClick && onClienteClick(c)}>
+                    {fmtDate(c.proxima_visita)}
+                  </td>
+                  <td className="table-cell text-right">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setEditing(c) }}
+                      title="Editar cliente"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity w-7 h-7 rounded-full hover:bg-ink-800 flex items-center justify-center text-ink-400 hover:text-steel-700"
+                    >
+                      <Pencil size={12} strokeWidth={1.75} />
+                    </button>
+                  </td>
                 </tr>
               ))}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={10} className="text-center py-10">
+                    <div className="font-mono text-[10.5px] text-ink-400 uppercase tracking-[0.18em] mb-2">
+                      Sin clientes con este filtro
+                    </div>
+                    <button onClick={() => setCreating(true)} className="btn-ghost">
+                      <Plus size={11} /> Agregar primero cliente
+                    </button>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
-        <div className="px-4 py-2.5 border-t border-ink-800 font-mono text-[10px] text-ink-500 uppercase tracking-wider">
-          {filtered.length} clientes mostrados
+        <div className="px-4 py-2.5 border-t border-ink-800 font-mono text-[10px] text-ink-400 uppercase tracking-wider flex items-center justify-between">
+          <span>{filtered.length} de {clientes.length} clientes</span>
+          <span>Hover sobre una fila para editar</span>
         </div>
       </Panel>
+
+      {creating && (
+        <FormCliente
+          onClose={() => setCreating(false)}
+          onSaved={() => { setCreating(false); cargar() }}
+        />
+      )}
+      {editing && (
+        <FormCliente
+          cliente={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => { setEditing(null); cargar() }}
+        />
+      )}
     </div>
   )
 }

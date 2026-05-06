@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { ArrowDownToLine, ArrowUpFromLine, X, Layers, TrendingUp, TrendingDown } from 'lucide-react'
 import { Panel } from '@/components/Panel'
 import { fmtMoney, fmtNumber, fmtDateTime, fmtDate } from '@/utils/format'
@@ -214,8 +215,8 @@ function MovimientoDrawer({ movimiento: m, onClose }) {
   const lotes = m.lotes_consumidos || []
   const utilidad = m.utilidad ?? 0
 
-  return (
-    <div className="fixed inset-y-0 right-0 w-full md:w-[460px] bg-ink-900 border-l border-ink-800 z-40 flex flex-col shadow-lift float-in">
+  return createPortal(
+    <div className="fixed inset-y-0 right-0 w-full md:w-[460px] bg-ink-900 border-l border-ink-800 z-40 flex flex-col shadow-lift modal-pop">
       <div className="px-5 py-4 border-b border-ink-800 flex items-start justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2 mb-1">
@@ -350,6 +351,7 @@ function MovimientoDrawer({ movimiento: m, onClose }) {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

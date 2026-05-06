@@ -396,95 +396,216 @@ const cxp = Array.from({ length: 16 }, (_, i) => {
   }
 })
 
-// ─────────── LOGÍSTICA ───────────
-// Ciudades principales con coordenadas reales
+// ─────────── LOGÍSTICA — Viajes foráneos del operador ───────────
+// El módulo cotiza transporte + hospedaje + viáticos para que un operador
+// salga de CDMX a atender clientes en otra ciudad.
+
+const ORIGEN_BASE = { id: 'cdmx', nombre: 'Ciudad de México', estado: 'CDMX', lat: 19.4326, lng: -99.1332 }
+
+// Destinos foráneos (excluye CDMX como destino) con km aprox a CDMX
 const CIUDADES = [
-  { id: 'cdmx', nombre: 'Ciudad de México', estado: 'CDMX', lat: 19.4326, lng: -99.1332 },
-  { id: 'gdl', nombre: 'Guadalajara', estado: 'Jalisco', lat: 20.6597, lng: -103.3496 },
-  { id: 'mty', nombre: 'Monterrey', estado: 'NL', lat: 25.6866, lng: -100.3161 },
-  { id: 'pue', nombre: 'Puebla', estado: 'Puebla', lat: 19.0414, lng: -98.2063 },
-  { id: 'qro', nombre: 'Querétaro', estado: 'Querétaro', lat: 20.5888, lng: -100.3899 },
-  { id: 'leo', nombre: 'León', estado: 'Guanajuato', lat: 21.1250, lng: -101.6859 },
-  { id: 'tij', nombre: 'Tijuana', estado: 'BC', lat: 32.5149, lng: -117.0382 },
-  { id: 'mer', nombre: 'Mérida', estado: 'Yucatán', lat: 20.9674, lng: -89.5926 },
-  { id: 'cun', nombre: 'Cancún', estado: 'QR', lat: 21.1619, lng: -86.8515 },
-  { id: 'tol', nombre: 'Toluca', estado: 'Edomex', lat: 19.2826, lng: -99.6557 },
-  { id: 'agu', nombre: 'Aguascalientes', estado: 'Ags', lat: 21.8853, lng: -102.2916 },
-  { id: 'sld', nombre: 'San Luis Potosí', estado: 'SLP', lat: 22.1565, lng: -100.9855 },
-  { id: 'chi', nombre: 'Chihuahua', estado: 'Chih', lat: 28.6353, lng: -106.0889 },
-  { id: 'her', nombre: 'Hermosillo', estado: 'Sonora', lat: 29.0729, lng: -110.9559 },
-  { id: 'ver', nombre: 'Veracruz', estado: 'Veracruz', lat: 19.1738, lng: -96.1342 },
+  ORIGEN_BASE,
+  { id: 'gdl', nombre: 'Guadalajara',     estado: 'Jalisco',    lat: 20.6597, lng: -103.3496, km_a_cdmx: 555 },
+  { id: 'mty', nombre: 'Monterrey',       estado: 'NL',         lat: 25.6866, lng: -100.3161, km_a_cdmx: 925 },
+  { id: 'pue', nombre: 'Puebla',          estado: 'Puebla',     lat: 19.0414, lng: -98.2063,  km_a_cdmx: 130 },
+  { id: 'qro', nombre: 'Querétaro',       estado: 'Querétaro',  lat: 20.5888, lng: -100.3899, km_a_cdmx: 215 },
+  { id: 'leo', nombre: 'León',            estado: 'Guanajuato', lat: 21.1250, lng: -101.6859, km_a_cdmx: 385 },
+  { id: 'tij', nombre: 'Tijuana',         estado: 'BC',         lat: 32.5149, lng: -117.0382, km_a_cdmx: 2740 },
+  { id: 'mer', nombre: 'Mérida',          estado: 'Yucatán',    lat: 20.9674, lng: -89.5926,  km_a_cdmx: 1320 },
+  { id: 'cun', nombre: 'Cancún',          estado: 'QR',         lat: 21.1619, lng: -86.8515,  km_a_cdmx: 1620 },
+  { id: 'tol', nombre: 'Toluca',          estado: 'Edomex',     lat: 19.2826, lng: -99.6557,  km_a_cdmx: 65 },
+  { id: 'agu', nombre: 'Aguascalientes',  estado: 'Ags',        lat: 21.8853, lng: -102.2916, km_a_cdmx: 510 },
+  { id: 'sld', nombre: 'San Luis Potosí', estado: 'SLP',        lat: 22.1565, lng: -100.9855, km_a_cdmx: 415 },
+  { id: 'chi', nombre: 'Chihuahua',       estado: 'Chih',       lat: 28.6353, lng: -106.0889, km_a_cdmx: 1500 },
+  { id: 'her', nombre: 'Hermosillo',      estado: 'Sonora',     lat: 29.0729, lng: -110.9559, km_a_cdmx: 1985 },
+  { id: 'ver', nombre: 'Veracruz',        estado: 'Veracruz',   lat: 19.1738, lng: -96.1342,  km_a_cdmx: 400 },
 ]
 
-// Distancia aprox haversine
-const dist = (a, b) => {
-  const R = 6371
-  const toRad = x => x * Math.PI / 180
-  const dLat = toRad(b.lat - a.lat)
-  const dLng = toRad(b.lng - a.lng)
-  const x = Math.sin(dLat/2)**2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng/2)**2
-  return Math.round(2 * R * Math.asin(Math.sqrt(x)))
+// Tarifas de vuelo redondo CDMX → ciudad (precio aprox MXN, jul 2026)
+const TARIFAS_VUELO = {
+  gdl: 2400, mty: 3200, pue: 1800, qro: 1900, leo: 2400,
+  tij: 4500, mer: 4200, cun: 4800, tol: 1500, agu: 2700,
+  sld: 2600, chi: 4100, her: 4400, ver: 2300,
+}
+// Tarifas de autobús redondo (ETN/Primera Plus aprox)
+const TARIFAS_BUS = {
+  gdl: 1800, mty: 2400, pue: 600, qro: 700, leo: 1300,
+  tij: 4200, mer: 3200, cun: 3800, tol: 320, agu: 1700,
+  sld: 1500, chi: 3600, her: 4000, ver: 1200,
 }
 
-// Tarifas: $14/km + base por viaje + factor según tipo de camión
-const calcCotizacion = (origenId, destinoId, tipo = 'rabón') => {
-  const o = CIUDADES.find(c => c.id === origenId)
-  const d = CIUDADES.find(c => c.id === destinoId)
-  if (!o || !d) return null
-  const km = dist(o, d)
-  const factor = tipo === 'tortón' ? 1.7 : tipo === 'trailer' ? 2.4 : 1
-  const base = 1500 * factor
-  const tarifaKm = 14 * factor
-  const peajes = Math.round(km * 1.8)
-  const subtotal = base + (km * tarifaKm) + peajes
-  const iva = Math.round(subtotal * 0.16)
-  const horasEstimadas = Math.round(km / 70)
+// Tarifas hotel por noche
+const TARIFAS_HOTEL = {
+  '3': { label: '3 estrellas', precio_noche: 1400 },
+  '4': { label: '4 estrellas', precio_noche: 2000 },
+  '5': { label: '5 estrellas', precio_noche: 3200 },
+}
+
+// Categorías de transporte
+const TIPOS_TRANSPORTE = [
+  { id: 'vuelo_redondo',  label: 'Vuelo redondo',     desc: 'Avión ida y vuelta — más rápido, ideal foráneos lejanos' },
+  { id: 'autobus_redondo',label: 'Autobús redondo',   desc: 'Primera clase ETN/Primera Plus — económico' },
+  { id: 'auto_rentado',   label: 'Auto rentado',      desc: 'Hertz/Sixt — flexibilidad para varios clientes' },
+  { id: 'vehiculo_propio',label: 'Vehículo de empresa', desc: 'Reembolso por gasolina + casetas + desgaste' },
+]
+
+// Tarifas auto (rentado y propio)
+const TARIFA_AUTO_RENTA_DIA  = 1200      // costo renta por día
+const TARIFA_GASOLINA_AUTO   = 2.4       // $/km (Hyundai Accent ~10 km/L con gasolina ~$24/L)
+const TARIFA_CASETAS_KM      = 0.6       // $/km aprox
+const VIATICOS_DIARIOS_DEFAULT = 600     // comidas + incidentales
+
+// Cotizador
+const calcCotizacionViaje = (input) => {
+  const {
+    destino_id,
+    fecha_salida,           // ISO
+    fecha_regreso,          // ISO
+    transporte,             // 'vuelo_redondo' | 'autobus_redondo' | 'auto_rentado' | 'vehiculo_propio'
+    categoria_hotel = '4',  // '3' | '4' | '5'
+    viaticos_diarios = VIATICOS_DIARIOS_DEFAULT,
+    incluye_hotel = true,
+    operador_id = null,
+  } = input || {}
+
+  const destino = CIUDADES.find(c => c.id === destino_id)
+  if (!destino || destino.id === 'cdmx') return null
+
+  const f1 = new Date(fecha_salida)
+  const f2 = new Date(fecha_regreso)
+  if (isNaN(f1) || isNaN(f2) || f2 < f1) return null
+  const dias = Math.max(1, Math.ceil((f2 - f1) / 86400000) + 1) // incluye día de salida y regreso
+  const noches = Math.max(0, dias - 1)
+  const km = destino.km_a_cdmx || 0
+
+  // Transporte
+  let costoTransporte = 0
+  let detalleTransporte = ''
+  switch (transporte) {
+    case 'vuelo_redondo':
+      costoTransporte = TARIFAS_VUELO[destino.id] || 3000
+      detalleTransporte = `Vuelo redondo CDMX ↔ ${destino.nombre}`
+      break
+    case 'autobus_redondo':
+      costoTransporte = TARIFAS_BUS[destino.id] || 1500
+      detalleTransporte = `Autobús redondo primera clase`
+      break
+    case 'auto_rentado': {
+      const renta    = TARIFA_AUTO_RENTA_DIA * dias
+      const gasolina = Math.round(km * 2 * TARIFA_GASOLINA_AUTO) // ida y vuelta
+      const casetas  = Math.round(km * 2 * TARIFA_CASETAS_KM)
+      costoTransporte = renta + gasolina + casetas
+      detalleTransporte = `Auto rentado ${dias}d (${fmtAux.k(renta)}) + gasolina ${km*2}km (${fmtAux.k(gasolina)}) + casetas (${fmtAux.k(casetas)})`
+      break
+    }
+    case 'vehiculo_propio': {
+      const gasolina = Math.round(km * 2 * TARIFA_GASOLINA_AUTO)
+      const casetas  = Math.round(km * 2 * TARIFA_CASETAS_KM)
+      const desgaste = Math.round(km * 2 * 1.2) // $1.2/km de desgaste
+      costoTransporte = gasolina + casetas + desgaste
+      detalleTransporte = `Reembolso ${km*2}km · gasolina + casetas + desgaste`
+      break
+    }
+    default:
+      costoTransporte = 0
+  }
+
+  // Hospedaje
+  const tarifaHotel = TARIFAS_HOTEL[String(categoria_hotel)] || TARIFAS_HOTEL['4']
+  const costoHotel  = incluye_hotel ? tarifaHotel.precio_noche * noches : 0
+
+  // Viáticos
+  const costoViaticos = viaticos_diarios * dias
+
+  const subtotal = costoTransporte + costoHotel + costoViaticos
+  const iva      = Math.round(subtotal * 0.16)
+  const total    = subtotal + iva
+
   return {
-    origen: o, destino: d, km, tipo,
-    base: Math.round(base),
-    tarifa_km: Math.round(tarifaKm),
-    costo_km: Math.round(km * tarifaKm),
-    peajes, subtotal: Math.round(subtotal), iva, total: Math.round(subtotal + iva),
-    horas_estimadas: horasEstimadas, dias_estimados: Math.ceil(horasEstimadas / 9),
+    origen: ORIGEN_BASE,
+    destino,
+    operador_id,
+    fecha_salida, fecha_regreso,
+    dias, noches, km_aprox: km,
+    transporte: { tipo: transporte, label: TIPOS_TRANSPORTE.find(t => t.id === transporte)?.label, costo: costoTransporte, detalle: detalleTransporte },
+    hospedaje:  { categoria: String(categoria_hotel), label: tarifaHotel.label, noches, precio_noche: tarifaHotel.precio_noche, costo: costoHotel, incluido: incluye_hotel },
+    viaticos:   { diarios: viaticos_diarios, dias, costo: costoViaticos },
+    subtotal, iva, total,
   }
 }
 
+// helper para los strings del detalle
+const fmtAux = {
+  k: (n) => `$${Math.round(n).toLocaleString('es-MX')}`,
+}
+
+// ─── Viajes históricos / agendados ───
+const _operadoresNames = ['Mario Sánchez', 'Luis Gómez', 'Carlos Pérez', 'Diego Hernández', 'Roberto Cruz']
+const PROPOSITOS_VIAJE = [
+  'Visita técnica + recargas',
+  'Implementación nuevo cliente',
+  'Mantenimiento preventivo trimestral',
+  'Auditoría de equipos en sitio',
+  'Capacitación operativa al staff',
+  'Atención a falla reportada',
+]
 const viajes = Array.from({ length: 12 }, (_, i) => {
-  const o = CIUDADES[i % CIUDADES.length]
-  const d = CIUDADES[(i + 3 + (i % 5)) % CIUDADES.length]
-  const tipo = ['rabón', 'tortón', 'trailer'][i % 3]
-  const cot = calcCotizacion(o.id, d.id, tipo)
-  const operadores = ['Mario Sánchez', 'Luis Gómez', 'Carlos Pérez', 'Diego Hernández', 'Roberto Cruz']
-  const fecha = new Date(Date.now() + (i - 4) * 86400000)
+  const destino = CIUDADES.filter(c => c.id !== 'cdmx')[i % (CIUDADES.length - 1)]
+  const transporte = ['vuelo_redondo', 'autobus_redondo', 'auto_rentado', 'vehiculo_propio'][i % 4]
+  const categoria_hotel = ['3', '4', '5'][i % 3]
+  const fechaSalida = new Date(Date.now() + (i - 4) * 3 * 86400000)
+  const dias = [2, 3, 4, 2, 5, 3][i % 6]
+  const fechaRegreso = new Date(fechaSalida.getTime() + (dias - 1) * 86400000)
+  const cot = calcCotizacionViaje({
+    destino_id: destino.id,
+    fecha_salida: fechaSalida.toISOString(),
+    fecha_regreso: fechaRegreso.toISOString(),
+    transporte,
+    categoria_hotel,
+  })
   const status = i < 3 ? 'completado' : i < 5 ? 'en_curso' : i < 9 ? 'agendado' : 'cotización'
   return {
     id: i + 1,
     folio: `VJ-${3000 + i}`,
-    origen: o, destino: d, tipo,
-    operador: operadores[i % operadores.length],
-    placa: `${['ABC', 'XYZ', 'KLM', 'NPQ'][i % 4]}-${1000 + i}`,
-    km: cot.km,
+    operador: _operadoresNames[i % _operadoresNames.length],
+    operador_id: (i % 5) + 1,
+    proposito: PROPOSITOS_VIAJE[i % PROPOSITOS_VIAJE.length],
+    clientes_visitar: Math.floor(Math.random() * 4) + 2,
+    fecha_salida: fechaSalida.toISOString(),
+    fecha_regreso: fechaRegreso.toISOString(),
+    dias: cot.dias,
+    noches: cot.noches,
+    destino: cot.destino,
+    transporte: cot.transporte,
+    hospedaje: cot.hospedaje,
+    viaticos: cot.viaticos,
+    subtotal: cot.subtotal,
+    iva: cot.iva,
     total: cot.total,
-    fecha_salida: fecha.toISOString(),
-    fecha_llegada: new Date(fecha.getTime() + cot.horas_estimadas * 3600000).toISOString(),
     status,
-    clientes_visitar: Math.floor(Math.random() * 5) + 2,
-    carga: ['12 difusores grandes + 80L aceite', '6 difusores chicos + 40L aceite',
-            'Surtido completo zona', 'Reposición + insumos', 'Visita técnica + recargas'][i % 5],
   }
 })
 
 // ─────────── RUTAS ───────────
 // Clientes geolocalizados en CDMX y zona metropolitana, además de otras ciudades
+// Zonas locales (CDMX/Edomex) y zonas foráneas (otras ciudades)
 const ZONAS = [
-  { id: 'polanco', nombre: 'Polanco', color: '#2563eb', lat: 19.4338, lng: -99.1934 },
-  { id: 'roma_condesa', nombre: 'Roma · Condesa', color: '#0891b2', lat: 19.4145, lng: -99.1665 },
-  { id: 'santa_fe', nombre: 'Santa Fe', color: '#7c3aed', lat: 19.3622, lng: -99.2596 },
-  { id: 'centro', nombre: 'Centro Histórico', color: '#db2777', lat: 19.4326, lng: -99.1332 },
-  { id: 'coyoacan', nombre: 'Coyoacán · Del Valle', color: '#ea580c', lat: 19.3467, lng: -99.1618 },
-  { id: 'satelite', nombre: 'Satélite · Interlomas', color: '#16a34a', lat: 19.5099, lng: -99.2342 },
-  { id: 'aeropuerto', nombre: 'Aeropuerto · Oriente', color: '#ca8a04', lat: 19.4361, lng: -99.0719 },
-  { id: 'sur', nombre: 'Sur · Tlalpan', color: '#0d9488', lat: 19.2925, lng: -99.1663 },
+  // Locales — CDMX
+  { id: 'polanco',      nombre: 'Polanco',              color: '#c2592b', lat: 19.4338, lng: -99.1934, foranea: false, ciudad: 'CDMX' },
+  { id: 'roma_condesa', nombre: 'Roma · Condesa',       color: '#7fa37b', lat: 19.4145, lng: -99.1665, foranea: false, ciudad: 'CDMX' },
+  { id: 'santa_fe',     nombre: 'Santa Fe',             color: '#9871a8', lat: 19.3622, lng: -99.2596, foranea: false, ciudad: 'CDMX' },
+  { id: 'centro',       nombre: 'Centro Histórico',     color: '#e8829c', lat: 19.4326, lng: -99.1332, foranea: false, ciudad: 'CDMX' },
+  { id: 'coyoacan',     nombre: 'Coyoacán · Del Valle', color: '#e57c5f', lat: 19.3467, lng: -99.1618, foranea: false, ciudad: 'CDMX' },
+  { id: 'satelite',     nombre: 'Satélite · Interlomas',color: '#62a890', lat: 19.5099, lng: -99.2342, foranea: false, ciudad: 'CDMX' },
+  { id: 'aeropuerto',   nombre: 'Aeropuerto · Oriente', color: '#c8a34a', lat: 19.4361, lng: -99.0719, foranea: false, ciudad: 'CDMX' },
+  { id: 'sur',          nombre: 'Sur · Tlalpan',        color: '#5d9bbf', lat: 19.2925, lng: -99.1663, foranea: false, ciudad: 'CDMX' },
+  // Foráneas — otras ciudades
+  { id: 'gdl_centro',   nombre: 'Guadalajara Centro',   color: '#d29c4f', lat: 20.6597, lng: -103.3496, foranea: true, ciudad: 'Guadalajara', ciudad_id: 'gdl' },
+  { id: 'mty_centro',   nombre: 'Monterrey San Pedro',  color: '#9871a8', lat: 25.6500, lng: -100.4030, foranea: true, ciudad: 'Monterrey',   ciudad_id: 'mty' },
+  { id: 'pue_centro',   nombre: 'Puebla Centro',        color: '#7fa37b', lat: 19.0414, lng: -98.2063,  foranea: true, ciudad: 'Puebla',      ciudad_id: 'pue' },
+  { id: 'qro_centro',   nombre: 'Querétaro Juriquilla', color: '#e8829c', lat: 20.7170, lng: -100.4420, foranea: true, ciudad: 'Querétaro',   ciudad_id: 'qro' },
+  { id: 'leo_centro',   nombre: 'León Centro',          color: '#c2592b', lat: 21.1250, lng: -101.6859, foranea: true, ciudad: 'León',        ciudad_id: 'leo' },
+  { id: 'cun_zona',     nombre: 'Cancún Hotelera',      color: '#5d9bbf', lat: 21.1330, lng: -86.7457,  foranea: true, ciudad: 'Cancún',      ciudad_id: 'cun' },
 ]
 
 const CLIENTES_RUTAS = [
@@ -528,31 +649,86 @@ const CLIENTES_RUTAS = [
   { nombre: 'Cinépolis Perisur', zona: 'sur', lat: 19.3060, lng: -99.1930, equipos: 4 },
   { nombre: 'Walmart Tlalpan', zona: 'sur', lat: 19.2930, lng: -99.1680, equipos: 5 },
   { nombre: 'Hotel Royal Pedregal', zona: 'sur', lat: 19.3120, lng: -99.2030, equipos: 3 },
+
+  // ─── Foráneos ───
+  // Guadalajara
+  { nombre: 'Hotel Riu Plaza Guadalajara',  zona: 'gdl_centro', lat: 20.6750, lng: -103.4058, equipos: 6 },
+  { nombre: 'Andares Centro Comercial',     zona: 'gdl_centro', lat: 20.7148, lng: -103.4155, equipos: 9 },
+  { nombre: 'Hospital Puerta de Hierro',    zona: 'gdl_centro', lat: 20.7212, lng: -103.4380, equipos: 7 },
+  { nombre: 'Hotel Demetria',               zona: 'gdl_centro', lat: 20.6795, lng: -103.3915, equipos: 4 },
+  { nombre: 'Plaza Galerías Guadalajara',   zona: 'gdl_centro', lat: 20.6790, lng: -103.4117, equipos: 8 },
+  { nombre: 'Liverpool Galerías GDL',       zona: 'gdl_centro', lat: 20.6798, lng: -103.4120, equipos: 5 },
+  // Monterrey
+  { nombre: 'Hotel Quinta Real Monterrey',  zona: 'mty_centro', lat: 25.6536, lng: -100.4123, equipos: 5 },
+  { nombre: 'Galerías Valle Oriente',       zona: 'mty_centro', lat: 25.6320, lng: -100.3623, equipos: 11 },
+  { nombre: 'Hospital Zambrano Hellion',    zona: 'mty_centro', lat: 25.6510, lng: -100.2866, equipos: 8 },
+  { nombre: 'Hotel Ancira',                 zona: 'mty_centro', lat: 25.6700, lng: -100.3093, equipos: 4 },
+  { nombre: 'Plaza Fiesta San Agustín',     zona: 'mty_centro', lat: 25.6505, lng: -100.3110, equipos: 7 },
+  // Puebla
+  { nombre: 'Hotel Mesón Sacristía',        zona: 'pue_centro', lat: 19.0440, lng: -98.2018, equipos: 3 },
+  { nombre: 'Angelópolis Lifestyle Center', zona: 'pue_centro', lat: 19.0319, lng: -98.2358, equipos: 9 },
+  { nombre: 'Hospital Ángeles Puebla',      zona: 'pue_centro', lat: 19.0298, lng: -98.2407, equipos: 7 },
+  { nombre: 'Hotel La Purificadora',        zona: 'pue_centro', lat: 19.0490, lng: -98.2080, equipos: 4 },
+  // Querétaro
+  { nombre: 'Hotel Galería Plaza',          zona: 'qro_centro', lat: 20.5878, lng: -100.3902, equipos: 4 },
+  { nombre: 'Hospital Ángeles Querétaro',   zona: 'qro_centro', lat: 20.6052, lng: -100.4100, equipos: 7 },
+  { nombre: 'Antea Lifestyle Center',       zona: 'qro_centro', lat: 20.7054, lng: -100.4399, equipos: 10 },
+  { nombre: 'Hotel Mirabel Querétaro',      zona: 'qro_centro', lat: 20.5900, lng: -100.3950, equipos: 3 },
+  // León
+  { nombre: 'Hotel Real de Minas León',     zona: 'leo_centro', lat: 21.1335, lng: -101.6890, equipos: 4 },
+  { nombre: 'Plaza Mayor León',             zona: 'leo_centro', lat: 21.1090, lng: -101.6855, equipos: 8 },
+  { nombre: 'Hospital Aranda de la Parra',  zona: 'leo_centro', lat: 21.1290, lng: -101.6680, equipos: 6 },
+  // Cancún
+  { nombre: 'Hotel Krystal Cancún',         zona: 'cun_zona',   lat: 21.1340, lng: -86.7475, equipos: 8 },
+  { nombre: 'Plaza La Isla Cancún',         zona: 'cun_zona',   lat: 21.1374, lng: -86.7461, equipos: 7 },
+  { nombre: 'Hospital Galenia Cancún',      zona: 'cun_zona',   lat: 21.1421, lng: -86.8330, equipos: 5 },
+  { nombre: 'Hotel Coral Beach Cancún',     zona: 'cun_zona',   lat: 21.1287, lng: -86.7497, equipos: 6 },
 ]
 
-// Operadores
+// Operadores — ahora con zonas locales + foráneas asignadas
 const OPERADORES = [
-  { id: 1, nombre: 'Mario Sánchez', zonas: ['polanco', 'centro'], avatar: 'MS', activo: true },
-  { id: 2, nombre: 'Luis Gómez', zonas: ['santa_fe', 'satelite'], avatar: 'LG', activo: true },
-  { id: 3, nombre: 'Carlos Pérez', zonas: ['roma_condesa', 'sur'], avatar: 'CP', activo: true },
-  { id: 4, nombre: 'Diego Hernández', zonas: ['coyoacan', 'aeropuerto'], avatar: 'DH', activo: true },
-  { id: 5, nombre: 'Roberto Cruz', zonas: [], avatar: 'RC', activo: false },
+  { id: 1, nombre: 'Mario Sánchez',     zonas: ['polanco', 'centro', 'gdl_centro'],         avatar: 'MS', activo: true,  base: 'CDMX' },
+  { id: 2, nombre: 'Luis Gómez',        zonas: ['santa_fe', 'satelite', 'qro_centro', 'leo_centro'], avatar: 'LG', activo: true, base: 'CDMX' },
+  { id: 3, nombre: 'Carlos Pérez',      zonas: ['roma_condesa', 'sur', 'pue_centro'],       avatar: 'CP', activo: true,  base: 'CDMX' },
+  { id: 4, nombre: 'Diego Hernández',   zonas: ['coyoacan', 'aeropuerto', 'mty_centro', 'cun_zona'], avatar: 'DH', activo: true, base: 'CDMX' },
+  { id: 5, nombre: 'Roberto Cruz',      zonas: [],                                          avatar: 'RC', activo: false, base: 'CDMX' },
 ]
+
+// Tiempo de servicio por equipo (minutos) — usado por optimizador
+const MINUTOS_POR_EQUIPO = 12
+const MINUTOS_FIJO_POR_CLIENTE = 8 // setup, papeleo, traslado dentro del edificio
+
+// Calcula score de prioridad 0-100 (mayor = más urgente)
+function calcPrioridad(c) {
+  const aceiteUrgencia = (100 - (c.aceite_restante_pct ?? 100)) / 100   // 0..1
+  const visitaUrgencia = Math.min((c.dias_ultima_visita ?? 0) / 35, 1)  // 0..1 (35d = max)
+  const tamañoFactor   = Math.min((c.equipos ?? 1) / 12, 1)             // 0..1 (12 equipos = max)
+  const score =
+      40 * aceiteUrgencia
+    + 35 * visitaUrgencia
+    + 15 * tamañoFactor
+    + 10 * (c.dias_ultima_visita > 30 ? 1 : 0) // mínimo 1 vez al mes
+  return Math.round(Math.min(100, score))
+}
 
 // Generar clientes con metadata de visita
 const clientesRutas = CLIENTES_RUTAS.map((c, i) => {
   const z = ZONAS.find(z => z.id === c.zona)
   const op = OPERADORES.find(o => o.zonas.includes(c.zona))
-  const diasUltimaVisita = Math.floor(Math.random() * 45)
+  // Foráneos visitados con menos frecuencia → más días desde última visita
+  const maxDias = z?.foranea ? 60 : 45
+  const diasUltimaVisita = Math.floor(Math.random() * maxDias)
   const aceiteRestante = Math.round(Math.random() * 100)
   const status = diasUltimaVisita > 35 ? 'urgente' : diasUltimaVisita > 28 ? 'pendiente' : 'al_dia'
-  return {
+  const baseObj = {
     id: i + 1,
     codigo: `CL-${String(1000 + i).padStart(4, '0')}`,
     nombre: c.nombre,
     zona_id: c.zona,
     zona_nombre: z?.nombre,
     zona_color: z?.color,
+    zona_foranea: !!z?.foranea,
+    ciudad: z?.ciudad || 'CDMX',
     lat: c.lat, lng: c.lng,
     equipos: c.equipos,
     operador_asignado: op?.nombre || 'Sin asignar',
@@ -562,8 +738,171 @@ const clientesRutas = CLIENTES_RUTAS.map((c, i) => {
     aceite_restante_pct: aceiteRestante,
     status_visita: status,
     proxima_visita: new Date(Date.now() + Math.max(0, 30 - diasUltimaVisita) * 86400000).toISOString(),
+    tiempo_servicio_min: c.equipos * MINUTOS_POR_EQUIPO + MINUTOS_FIJO_POR_CLIENTE,
+  }
+  return { ...baseObj, prioridad_score: calcPrioridad(baseObj) }
+})
+
+// ─────────── INCIDENTES ───────────
+// Incidentes en clientes que pueden afectar la ruta del día
+const TIPOS_INCIDENTE = [
+  { id: 'cliente_cerrado',    label: 'Cliente cerrado',           desc: 'El sitio no abre hoy' },
+  { id: 'falla_equipo',       label: 'Falla de equipo',           desc: 'Reportó un difusor con falla — requiere refacción' },
+  { id: 'cancelacion',        label: 'Cliente canceló',           desc: 'Pidió reagendar' },
+  { id: 'acceso_denegado',    label: 'Acceso denegado',           desc: 'Seguridad no permite entrar sin cita' },
+  { id: 'operador_indispuesto',label:'Operador indispuesto',      desc: 'Reasignar zona' },
+]
+
+const incidentes = Array.from({ length: 6 }, (_, i) => {
+  const cliente = clientesRutas[Math.floor(Math.random() * clientesRutas.length)]
+  const tipo = TIPOS_INCIDENTE[i % TIPOS_INCIDENTE.length]
+  const fecha = new Date(Date.now() - i * 86400000 * 0.3).toISOString()
+  return {
+    id: i + 1,
+    folio: `INC-${7000 + i}`,
+    tipo: tipo.id,
+    tipo_label: tipo.label,
+    descripcion: tipo.desc,
+    cliente_id: cliente.id,
+    cliente_nombre: cliente.nombre,
+    zona_id: cliente.zona_id,
+    zona_nombre: cliente.zona_nombre,
+    operador: cliente.operador_asignado,
+    fecha,
+    resuelto: i > 2,
   }
 })
+
+// ─────────── OPTIMIZADOR DE RUTAS ───────────
+// Distancia haversine (en km)
+function distKm(a, b) {
+  const R = 6371
+  const toRad = x => x * Math.PI / 180
+  const dLat = toRad(b.lat - a.lat)
+  const dLng = toRad(b.lng - a.lng)
+  const x = Math.sin(dLat/2)**2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng/2)**2
+  return 2 * R * Math.asin(Math.sqrt(x))
+}
+
+// Optimizador de ruta DENTRO de una zona.
+// Filosofía:
+//   1) `minScore` y `excluidos` deciden QUÉ clientes entran a la ruta (capa de prioridad).
+//   2) Una vez seleccionados, el orden se calcula por proximidad geográfica pura
+//      (nearest-neighbor sobre distancia haversine) — sin pesos de prioridad.
+// Esto evita zig-zags: dentro de la ruta solo importa minimizar km/tiempo de traslado.
+function optimizarRutaZona(zonaId, opciones = {}) {
+  const {
+    fecha = new Date().toISOString(),
+    operadorId = null,
+    excluidos = [],   // ids de clientes a excluir (incidentes)
+    minScore = 0,     // capa de prioridad: solo clientes con score >= minScore
+  } = opciones
+  const zona = ZONAS.find(z => z.id === zonaId)
+  if (!zona) return null
+
+  const clientesZona = clientesRutas
+    .filter(c => c.zona_id === zonaId)
+    .filter(c => !excluidos.includes(c.id))
+    .filter(c => c.prioridad_score >= minScore)
+
+  if (clientesZona.length === 0) return null
+
+  // Punto de partida: el centroide de la zona (en producción sería el origen del operador)
+  const start = { lat: zona.lat, lng: zona.lng }
+
+  // Nearest-neighbor PURO — solo distancia, sin pesos de prioridad
+  const restantes = [...clientesZona]
+  const ordenados = []
+  let actual = start
+  let kmTotal = 0
+
+  while (restantes.length > 0) {
+    let mejorIdx = 0
+    let mejorDist = Infinity
+    for (let i = 0; i < restantes.length; i++) {
+      const d = distKm(actual, restantes[i])
+      if (d < mejorDist) {
+        mejorDist = d
+        mejorIdx = i
+      }
+    }
+    const elegido = restantes.splice(mejorIdx, 1)[0]
+    kmTotal += mejorDist
+    ordenados.push({
+      ...elegido,
+      orden: ordenados.length + 1,
+      km_desde_anterior: +mejorDist.toFixed(2),
+    })
+    actual = elegido
+  }
+  // Regreso a base (centroide zona)
+  kmTotal += distKm(actual, start)
+
+  const tiempoServicioMin = ordenados.reduce((s, c) => s + c.tiempo_servicio_min, 0)
+  const tiempoTrasladoMin = Math.round((kmTotal / 25) * 60) // 25 km/h promedio en ciudad
+  const tiempoTotalMin    = tiempoServicioMin + tiempoTrasladoMin
+
+  // Costo estimado: gasolina + viáticos (si foránea, requiere viaje en logística)
+  const costoGasolina = Math.round(kmTotal * 2.4) // $2.4/km
+  const costoCasetas  = zona.foranea ? 0 : Math.round(kmTotal * 0.15)
+
+  return {
+    zona,
+    fecha,
+    operador_id: operadorId,
+    clientes: ordenados,
+    total_clientes: ordenados.length,
+    total_equipos: ordenados.reduce((s, c) => s + c.equipos, 0),
+    km_total: +kmTotal.toFixed(2),
+    tiempo_servicio_min: tiempoServicioMin,
+    tiempo_traslado_min: tiempoTrasladoMin,
+    tiempo_total_min: tiempoTotalMin,
+    tiempo_total_horas: +(tiempoTotalMin / 60).toFixed(1),
+    costo_gasolina: costoGasolina,
+    costo_casetas: costoCasetas,
+    cabe_en_dia: tiempoTotalMin <= 8 * 60, // 8 hrs de jornada
+    score_promedio: Math.round(ordenados.reduce((s, c) => s + c.prioridad_score, 0) / ordenados.length),
+  }
+}
+
+// Plan semanal automático: genera rutas optimizadas para los próximos 5 días laborales
+function planSemanal(diasAdelante = 5) {
+  // Priorizar zonas con más clientes urgentes
+  const zonasOrdenadas = ZONAS
+    .map(z => {
+      const clientesUrgentes = clientesRutas.filter(c => c.zona_id === z.id && c.prioridad_score >= 50).length
+      const promedioPrioridad = clientesRutas
+        .filter(c => c.zona_id === z.id)
+        .reduce((s, c, _, arr) => s + (c.prioridad_score / arr.length), 0)
+      return { ...z, clientesUrgentes, promedioPrioridad }
+    })
+    .sort((a, b) => b.promedioPrioridad - a.promedioPrioridad)
+
+  const plan = []
+  const hoy = new Date()
+  let zonaIdx = 0
+
+  for (let dia = 0; dia < diasAdelante && zonaIdx < zonasOrdenadas.length; dia++) {
+    const fecha = new Date(hoy.getTime() + dia * 86400000)
+    // Saltar fines de semana
+    while (fecha.getDay() === 0 || fecha.getDay() === 6) fecha.setDate(fecha.getDate() + 1)
+
+    const zona = zonasOrdenadas[zonaIdx]
+    const ruta = optimizarRutaZona(zona.id, {
+      fecha: fecha.toISOString(),
+      minScore: 30, // solo clientes que vale la pena visitar
+    })
+    if (ruta && ruta.total_clientes > 0) {
+      plan.push({
+        dia: dia + 1,
+        fecha: fecha.toISOString(),
+        ...ruta,
+      })
+    }
+    zonaIdx++
+  }
+  return plan
+}
 
 // Reportes de operador
 const reportesOperador = Array.from({ length: 22 }, (_, i) => {
@@ -599,6 +938,12 @@ const resumenZonas = () => {
   return ZONAS.map(z => {
     const clientesZona = clientesRutas.filter(c => c.zona_id === z.id)
     const op = OPERADORES.find(o => o.zonas.includes(z.id))
+    const promedioPrio = clientesZona.length
+      ? Math.round(clientesZona.reduce((s, c) => s + c.prioridad_score, 0) / clientesZona.length)
+      : 0
+    const promedioAceite = clientesZona.length
+      ? Math.round(clientesZona.reduce((s, c) => s + c.aceite_restante_pct, 0) / clientesZona.length)
+      : 0
     return {
       ...z,
       clientes_total: clientesZona.length,
@@ -607,6 +952,8 @@ const resumenZonas = () => {
       visitas_urgentes: clientesZona.filter(c => c.status_visita === 'urgente').length,
       operador: op?.nombre || 'Sin asignar',
       operador_id: op?.id,
+      prioridad_promedio: promedioPrio,
+      aceite_promedio: promedioAceite,
     }
   })
 }
@@ -993,12 +1340,86 @@ const tickets = ASUNTOS_TICKETS.map((t, i) => {
 // ─────────── ROUTER ───────────
 export function handleRequest(method, path, body) {
   // Inventarios
-  if (path === '/inventarios/aromas') return aromas
-  if (path.startsWith('/inventarios/aromas/')) {
+  if (path === '/inventarios/aromas' && method === 'GET') return aromas
+  if (path.startsWith('/inventarios/aromas/') && method === 'GET') {
     const id = +path.split('/').pop()
     return aromas.find(a => a.id === id)
   }
-  if (path === '/inventarios/difusores') return difusores
+  if (path === '/inventarios/aromas' && method === 'POST') {
+    const FAMILIAS = ['Floral', 'Cítrica', 'Amaderada', 'Especiada', 'Frutal', 'Herbal', 'Acuática', 'Dulce']
+    const nextId = Math.max(0, ...aromas.map(a => a.id)) + 1
+    const stockL = +body.stock_litros || 0
+    const minimo = +body.stock_minimo || 15
+    const costo = +body.costo_por_litro || 0
+    const precio = +body.precio_venta_litro || Math.round(costo * 1.6)
+    const nuevo = {
+      id: nextId,
+      codigo: body.codigo || `AR-${String(nextId).padStart(3, '0')}`,
+      nombre: body.nombre,
+      familia: FAMILIAS.includes(body.familia) ? body.familia : 'Floral',
+      stock_litros: stockL,
+      stock_minimo: minimo,
+      stock_status: stockL < minimo * 0.5 ? 'critico' : stockL < minimo ? 'bajo' : 'ok',
+      costo_por_litro: costo,
+      precio_venta_litro: precio,
+      ultimo_movimiento: new Date().toISOString(),
+    }
+    aromas.push(nuevo)
+    return nuevo
+  }
+  if (path.startsWith('/inventarios/aromas/') && method === 'PATCH') {
+    const id = +path.split('/').pop()
+    const a = aromas.find(x => x.id === id)
+    if (!a) return { error: 'Aroma no existe' }
+    if (body.nombre != null) a.nombre = body.nombre
+    if (body.familia != null) a.familia = body.familia
+    if (body.stock_minimo != null) a.stock_minimo = +body.stock_minimo
+    if (body.costo_por_litro != null) a.costo_por_litro = +body.costo_por_litro
+    if (body.precio_venta_litro != null) a.precio_venta_litro = +body.precio_venta_litro
+    a.stock_status = a.stock_litros < a.stock_minimo * 0.5 ? 'critico' : a.stock_litros < a.stock_minimo ? 'bajo' : 'ok'
+    return a
+  }
+  if (path.startsWith('/inventarios/aromas/') && method === 'DELETE') {
+    const id = +path.split('/').pop()
+    const idx = aromas.findIndex(a => a.id === id)
+    if (idx < 0) return { error: 'Aroma no existe' }
+    if (aromas[idx].stock_litros > 0) return { error: 'No puedes eliminar un aroma con stock activo' }
+    aromas.splice(idx, 1)
+    return { ok: true }
+  }
+  if (path === '/inventarios/difusores' && method === 'GET') return difusores
+  if (path === '/inventarios/difusores' && method === 'POST') {
+    const nextId = Math.max(0, ...difusores.map(d => d.id)) + 1
+    const nuevo = {
+      id: nextId,
+      codigo: body.codigo || `DIF-${nextId}`,
+      nombre: body.nombre,
+      tipo: body.tipo || 'chico',
+      stock: +body.stock || 0,
+      stock_minimo: +body.stock_minimo || 20,
+      costo: +body.costo || 0,
+      precio: +body.precio || 0,
+      cobertura_m2: +body.cobertura_m2 || 80,
+      descripcion: body.descripcion || '',
+    }
+    difusores.push(nuevo)
+    return nuevo
+  }
+  if (path.startsWith('/inventarios/difusores/') && method === 'PATCH') {
+    const id = +path.split('/').pop()
+    const d = difusores.find(x => x.id === id)
+    if (!d) return { error: 'Difusor no existe' }
+    Object.assign(d, body, { id: d.id })
+    return d
+  }
+  if (path.startsWith('/inventarios/difusores/') && method === 'DELETE') {
+    const id = +path.split('/').pop()
+    const idx = difusores.findIndex(d => d.id === id)
+    if (idx < 0) return { error: 'Difusor no existe' }
+    if (difusores[idx].stock > 0) return { error: 'No puedes eliminar un difusor con stock activo' }
+    difusores.splice(idx, 1)
+    return { ok: true }
+  }
   if (path === '/inventarios/movimientos') return movimientos
   if (path === '/inventarios/kpis') return kpisInventario()
   if (path.startsWith('/inventarios/lotes/')) {
@@ -1164,19 +1585,209 @@ export function handleRequest(method, path, body) {
     return nuevo
   }
 
-  // Logística
+  // Logística — viajes foráneos del operador
   if (path === '/logistica/viajes') return viajes
-  if (path === '/logistica/ciudades') return CIUDADES
+  if (path === '/logistica/ciudades') return CIUDADES.filter(c => c.id !== 'cdmx')
+  if (path === '/logistica/origen') return ORIGEN_BASE
+  if (path === '/logistica/transportes') return TIPOS_TRANSPORTE
+  if (path === '/logistica/hoteles') return Object.entries(TARIFAS_HOTEL).map(([id, h]) => ({ id, ...h }))
   if (path === '/logistica/cotizaciones' && method === 'POST') {
-    const cot = calcCotizacion(body.origen_id, body.destino_id, body.tipo)
-    return cot
+    return calcCotizacionViaje(body)
+  }
+  if (path === '/logistica/agendar' && method === 'POST') {
+    const cot = calcCotizacionViaje(body)
+    if (!cot) return { error: 'Datos inválidos' }
+    const nuevo = {
+      id: viajes.length + 1,
+      folio: `VJ-${3000 + viajes.length}`,
+      operador: body.operador_nombre || 'Sin asignar',
+      operador_id: body.operador_id || null,
+      proposito: body.proposito || 'Visita programada',
+      clientes_visitar: body.clientes_visitar || 0,
+      fecha_salida: cot.fecha_salida,
+      fecha_regreso: cot.fecha_regreso,
+      dias: cot.dias,
+      noches: cot.noches,
+      destino: cot.destino,
+      transporte: cot.transporte,
+      hospedaje: cot.hospedaje,
+      viaticos: cot.viaticos,
+      subtotal: cot.subtotal,
+      iva: cot.iva,
+      total: cot.total,
+      status: 'agendado',
+    }
+    viajes.unshift(nuevo)
+    return nuevo
   }
 
   // Rutas
   if (path === '/rutas/clientes') return clientesRutas
   if (path === '/rutas/zonas') return resumenZonas()
+  if (path === '/rutas/zonas-raw') return ZONAS // sin agregados (para forms)
   if (path === '/rutas/operadores') return OPERADORES
   if (path === '/rutas/reportes') return reportesOperador
+  if (path === '/rutas/incidentes') return incidentes
+  if (path === '/rutas/tipos-incidente') return TIPOS_INCIDENTE
+  if (path === '/rutas/plan-semanal') return planSemanal(body?.dias || 5)
+
+  // ─── CRUD Operadores ───
+  if (path === '/rutas/operadores' && method === 'POST') {
+    const initials = (body.nombre || '').split(/\s+/).map(s => s[0]).slice(0, 2).join('').toUpperCase()
+    const nuevo = {
+      id: Math.max(0, ...OPERADORES.map(o => o.id)) + 1,
+      nombre: body.nombre,
+      avatar: body.avatar || initials || 'OP',
+      zonas: Array.isArray(body.zonas) ? body.zonas : [],
+      activo: body.activo !== false,
+      base: body.base || 'CDMX',
+    }
+    OPERADORES.push(nuevo)
+    return nuevo
+  }
+  if (path.startsWith('/rutas/operadores/') && method === 'PATCH') {
+    const id = +path.split('/').pop()
+    const op = OPERADORES.find(o => o.id === id)
+    if (!op) return { error: 'Operador no existe' }
+    Object.assign(op, body)
+    if (body.nombre && !body.avatar) {
+      op.avatar = body.nombre.split(/\s+/).map(s => s[0]).slice(0, 2).join('').toUpperCase()
+    }
+    return op
+  }
+  if (path.startsWith('/rutas/operadores/') && method === 'DELETE') {
+    const id = +path.split('/').pop()
+    const idx = OPERADORES.findIndex(o => o.id === id)
+    if (idx < 0) return { error: 'Operador no existe' }
+    // Verificar que no tenga clientes asignados
+    const clientesAsignados = clientesRutas.filter(c => c.operador_id === id).length
+    if (clientesAsignados > 0) {
+      return { error: `Tiene ${clientesAsignados} clientes asignados. Reasígnalos primero.` }
+    }
+    OPERADORES.splice(idx, 1)
+    return { ok: true }
+  }
+
+  // ─── CRUD Clientes ───
+  if (path === '/rutas/clientes' && method === 'POST') {
+    const z = ZONAS.find(zn => zn.id === body.zona_id)
+    const op = OPERADORES.find(o => o.id === +body.operador_id)
+      || OPERADORES.find(o => o.zonas.includes(body.zona_id))
+    const dias = +body.dias_ultima_visita || 0
+    const aceite = body.aceite_restante_pct != null ? +body.aceite_restante_pct : 100
+    const status = dias > 35 ? 'urgente' : dias > 28 ? 'pendiente' : 'al_dia'
+    const equipos = +body.equipos || 1
+    const nextId = Math.max(0, ...clientesRutas.map(c => c.id)) + 1
+    const nuevo = {
+      id: nextId,
+      codigo: body.codigo || `CL-${String(1000 + nextId).padStart(4, '0')}`,
+      nombre: body.nombre,
+      zona_id: body.zona_id,
+      zona_nombre: z?.nombre,
+      zona_color: z?.color,
+      zona_foranea: !!z?.foranea,
+      ciudad: z?.ciudad || 'CDMX',
+      lat: +body.lat || z?.lat || 0,
+      lng: +body.lng || z?.lng || 0,
+      equipos,
+      operador_asignado: op?.nombre || 'Sin asignar',
+      operador_id: op?.id || null,
+      ultima_visita: new Date(Date.now() - dias * 86400000).toISOString(),
+      dias_ultima_visita: dias,
+      aceite_restante_pct: aceite,
+      status_visita: status,
+      proxima_visita: new Date(Date.now() + Math.max(0, 30 - dias) * 86400000).toISOString(),
+      tiempo_servicio_min: equipos * MINUTOS_POR_EQUIPO + MINUTOS_FIJO_POR_CLIENTE,
+    }
+    nuevo.prioridad_score = calcPrioridad(nuevo)
+    clientesRutas.push(nuevo)
+    return nuevo
+  }
+  if (path.startsWith('/rutas/clientes/') && method === 'PATCH') {
+    const id = +path.split('/').pop()
+    const c = clientesRutas.find(x => x.id === id)
+    if (!c) return { error: 'Cliente no existe' }
+    // Solo aplicar campos modificados
+    if (body.nombre != null) c.nombre = body.nombre
+    if (body.zona_id != null && body.zona_id !== c.zona_id) {
+      const z = ZONAS.find(zn => zn.id === body.zona_id)
+      c.zona_id = body.zona_id
+      c.zona_nombre = z?.nombre
+      c.zona_color = z?.color
+      c.zona_foranea = !!z?.foranea
+      c.ciudad = z?.ciudad || 'CDMX'
+    }
+    if (body.lat != null) c.lat = +body.lat
+    if (body.lng != null) c.lng = +body.lng
+    if (body.equipos != null) {
+      c.equipos = +body.equipos
+      c.tiempo_servicio_min = c.equipos * MINUTOS_POR_EQUIPO + MINUTOS_FIJO_POR_CLIENTE
+    }
+    if (body.operador_id != null) {
+      const op = OPERADORES.find(o => o.id === +body.operador_id)
+      c.operador_id = op?.id || null
+      c.operador_asignado = op?.nombre || 'Sin asignar'
+    }
+    if (body.aceite_restante_pct != null) c.aceite_restante_pct = +body.aceite_restante_pct
+    c.prioridad_score = calcPrioridad(c)
+    return c
+  }
+  if (path.startsWith('/rutas/clientes/') && method === 'DELETE') {
+    const id = +path.split('/').pop()
+    const idx = clientesRutas.findIndex(c => c.id === id)
+    if (idx < 0) return { error: 'Cliente no existe' }
+    clientesRutas.splice(idx, 1)
+    return { ok: true }
+  }
+
+  // ─── CRUD Zonas (foráneas) ───
+  if (path === '/rutas/zonas' && method === 'POST') {
+    const palette = ['#c2592b','#7fa37b','#9871a8','#e8829c','#5d9bbf','#d29c4f','#62a890','#c8a34a','#e57c5f']
+    const colorAsignado = body.color || palette[ZONAS.length % palette.length]
+    const ciudadObj = CIUDADES.find(c => c.id === body.ciudad_id)
+    const nueva = {
+      id: body.id || `zona_${Date.now()}`,
+      nombre: body.nombre,
+      color: colorAsignado,
+      lat: +body.lat || ciudadObj?.lat || 19.4326,
+      lng: +body.lng || ciudadObj?.lng || -99.1332,
+      foranea: body.foranea !== false,
+      ciudad: body.ciudad || ciudadObj?.nombre || 'Foránea',
+      ciudad_id: body.ciudad_id || null,
+    }
+    ZONAS.push(nueva)
+    return nueva
+  }
+  if (path.startsWith('/rutas/optimizar/')) {
+    // /rutas/optimizar/:zonaId
+    const zonaId = path.split('/').pop()
+    const excluidos = body?.excluidos || []
+    return optimizarRutaZona(zonaId, { excluidos, fecha: body?.fecha })
+  }
+  if (path === '/rutas/incidentes' && method === 'POST') {
+    const tipo = TIPOS_INCIDENTE.find(t => t.id === body.tipo)
+    const cliente = clientesRutas.find(c => c.id === +body.cliente_id)
+    const nuevo = {
+      id: incidentes.length + 1,
+      folio: `INC-${7000 + incidentes.length}`,
+      tipo: body.tipo,
+      tipo_label: tipo?.label || body.tipo,
+      descripcion: body.descripcion || tipo?.desc || '',
+      cliente_id: cliente?.id || null,
+      cliente_nombre: cliente?.nombre || null,
+      zona_id: cliente?.zona_id || null,
+      zona_nombre: cliente?.zona_nombre || null,
+      operador: body.operador || cliente?.operador_asignado || null,
+      fecha: new Date().toISOString(),
+      resuelto: false,
+    }
+    incidentes.unshift(nuevo)
+    // Si el cliente está en la ruta del día, sugerir ruta nueva sin él
+    const rutaSugerida = cliente
+      ? optimizarRutaZona(cliente.zona_id, { excluidos: [cliente.id] })
+      : null
+    return { incidente: nuevo, ruta_sugerida: rutaSugerida }
+  }
   if (path === '/rutas/visitas' && method === 'POST') {
     const reporte = {
       id: reportesOperador.length + 1,
@@ -1192,6 +1803,7 @@ export function handleRequest(method, path, body) {
       cliente.dias_ultima_visita = 0
       cliente.aceite_restante_pct = body.aceite_restante_pct
       cliente.status_visita = 'al_dia'
+      cliente.prioridad_score = calcPrioridad(cliente)
     }
     return reporte
   }
